@@ -1,0 +1,20 @@
+# Bỏ qua thư mục môi trường ảo
+venv/
+env/
+
+# Bỏ qua các file cache của Python
+__pycache__/
+*.pyc
+
+# Bỏ qua file cấu hình chứa mật khẩu (Quan trọng!)
+.env
+
+# Bỏ qua Database SQLite (nếu có dùng)
+*.db
+*.sqlite3
+
+# Bỏ qua dữ liệu của Docker
+postgres_data/
+
+# Bỏ qua file log hệ thống (nếu có)
+*.log

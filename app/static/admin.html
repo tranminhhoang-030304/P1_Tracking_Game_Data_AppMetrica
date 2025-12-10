@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Hệ Thống Quản Trị Dữ Liệu Game</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background-color: #f8f9fa; }
+        .card { margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .nav-link.active { background-color: #0d6efd !important; color: white !important; }
+        .status-badge { padding: 5px 10px; border-radius: 12px; font-size: 0.85em; }
+        .bg-SUCCESS { background-color: #d1e7dd; color: #0f5132; }
+        .bg-FAILED { background-color: #f8d7da; color: #842029; }
+        .bg-RUNNING { background-color: #cff4fc; color: #055160; }
+    </style>
+</head>
+<body class="p-4">
+
+<div class="container">
+    <h2 class="mb-4 text-primary fw-bold">🚀 GAME DATA CENTER</h2>
+
+    <ul class="nav nav-pills mb-4" id="pills-tab" role="tablist">
+        <li class="nav-item">
+            <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tab-dashboard" type="button">📊 Dashboard</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-monitor" type="button" onclick="loadLogs()">🕵️ Giám sát (Monitor)</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-config" type="button" onclick="loadConfigs()">⚙️ Cấu hình (Settings)</button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="pills-tabContent">
+        
+        <div class="tab-pane fade show active" id="tab-dashboard">
+            <div class="card p-3">
+                <h4 class="text-center">Báo Cáo Doanh Thu & Độ Khó</h4>
+                <canvas id="myChart"></canvas>
+            </div>
+            <div class="card p-3">
+                <h4>🏆 Top Booster</h4>
+                <table class="table table-striped">
+                    <thead><tr><th>Hạng</th><th>Tên Item</th><th>Lượt dùng</th><th>Tỷ lệ</th></tr></thead>
+                    <tbody id="boosterTable"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="tab-monitor">
+            <div class="d-flex justify-content-between mb-3">
+                <h4>📜 Nhật ký hoạt động (Job Logs)</h4>
+                <button class="btn btn-success fw-bold" onclick="runEtlNow()">▶️ CHẠY DỮ LIỆU NGAY</button>
+            </div>
+            <div class="card p-3">
+                <table class="table table-hover">
+                    <thead><tr><th>ID</th><th>Job Name</th><th>Trạng thái</th><th>Số dòng</th><th>Thông báo</th><th>Thời gian</th></tr></thead>
+                    <tbody id="logTable"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="tab-config">
+            <div class="card p-3">
+                <h4>⚙️ Cấu hình hệ thống</h4>
+                <p class="text-muted">Lưu ý: Thay đổi sẽ áp dụng cho lần chạy tiếp theo.</p>
+                <div id="configForm">Loading...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // --- JS CHO DASHBOARD (Copy logic cũ sang đây) ---
+    async function loadDashboard() {
+        const res = await fetch('/api/analytics/level-stats');
+        const json = await res.json();
+        const data = json.data;
+        // Vẽ Chart.js (Logic cũ)
+        new Chart(document.getElementById('myChart'), {
+            type: 'bar',
+            data: {
+                labels: data.map(i => i.level),
+                datasets: [{ label: 'Coin', data: data.map(i => i.revenue), yAxisID: 'y' },
+                           { label: 'Fail %', data: data.map(i => i.fail_rate), type: 'line', borderColor: 'red', yAxisID: 'y1' }]
+            },
+            options: { scales: { y: {position:'left'}, y1: {position:'right'} } }
+        });
+        
+        // Load Booster
+        const res2 = await fetch('/api/analytics/booster-stats');
+        const json2 = await res2.json();
+        document.getElementById('boosterTable').innerHTML = json2.data.map(i => 
+            `<tr><td>#${i.rank}</td><td>${i.name}</td><td>${i.used}</td><td>${i.percent}</td></tr>`
+        ).join('');
+    }
+
+    // --- JS CHO MONITOR ---
+    async function loadLogs() {
+        const res = await fetch('/api/admin/logs');
+        const json = await res.json();
+        const rows = json.data.map(log => `
+            <tr>
+                <td>${log.id}</td>
+                <td>${log.job_name}</td>
+                <td><span class="status-badge bg-${log.status}">${log.status}</span></td>
+                <td>${log.rows_imported}</td>
+                <td>${log.message || ''}</td>
+                <td>${new Date(log.start_time).toLocaleString()}</td>
+            </tr>
+        `).join('');
+        document.getElementById('logTable').innerHTML = rows;
+    }
+
+    async function runEtlNow() {
+        if(!confirm("Bạn có chắc muốn kích hoạt tiến trình lấy dữ liệu ngay lập tức?")) return;
+        const res = await fetch('/api/admin/run-etl', { method: 'POST' });
+        alert((await res.json()).message);
+        setTimeout(loadLogs, 2000); // Reload log sau 2s
+    }
+
+    // --- JS CHO SETTINGS ---
+    async function loadConfigs() {
+        const res = await fetch('/api/admin/configs');
+        const json = await res.json();
+        const html = json.data.map(cfg => `
+            <div class="mb-3 row">
+                <label class="col-sm-3 col-form-label fw-bold">${cfg.key}</label>
+                <div class="col-sm-7">
+                    <input type="text" class="form-control" id="cfg_${cfg.key}" value="${cfg.value}">
+                    <small class="text-muted">${cfg.description || ''}</small>
+                </div>
+                <div class="col-sm-2">
+                    <button class="btn btn-primary btn-sm mt-1" onclick="saveConfig('${cfg.key}')">Lưu</button>
+                </div>
+            </div>
+        `).join('');
+        document.getElementById('configForm').innerHTML = html;
+    }
+
+    async function saveConfig(key) {
+        const value = document.getElementById(`cfg_${key}`).value;
+        await fetch('/api/admin/configs', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({key, value})
+        });
+        alert("Đã lưu cấu hình: " + key);
+    }
+
+    // Khởi chạy Dashboard khi vào trang
+    loadDashboard();
+</script>
+</body>
+</html>

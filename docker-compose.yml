@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  # CHỈ GIỮ LẠI ÔNG CHỦ KHO DỮ LIỆU
+  db:
+    container_name: appmetrica_db
+    image: postgres:15
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=123456
+      - POSTGRES_DB=appmetrica
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # Mở cổng 5433 để Windows chọc vào
+    ports:
+      - "5433:5432"
+
+volumes:
+  postgres_data:

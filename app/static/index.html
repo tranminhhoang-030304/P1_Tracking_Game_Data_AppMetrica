@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AppMetrica Admin Dashboard</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f9; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        h2 { color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px; margin-top: 0; }
+        label { display: block; margin-top: 10px; font-weight: bold; color: #555; }
+        input, select { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        button { margin-top: 20px; width: 100%; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        button:hover { background-color: #0056b3; }
+        .alert { padding: 10px; margin-top: 10px; border-radius: 4px; display: none; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1 style="text-align: center; color: #444;">AppMetrica Data Project - Admin</h1>
+    
+    <div class="container">
+        <div class="card">
+            <h2>🎮 Thêm Game Mới</h2>
+            <form id="gameForm">
+                <label>Tên Game:</label>
+                <input type="text" name="name" placeholder="VD: Empire Defender" required>
+                
+                <label>Bundle ID (Package Name):</label>
+                <input type="text" name="bundle_id" placeholder="VD: com.zitga.empire" required>
+                
+                <label>Nền tảng:</label>
+                <select name="platform">
+                    <option value="android">Android</option>
+                    <option value="ios">iOS</option>
+                </select>
+
+                <label>AppMetrica App ID:</label>
+                <input type="text" name="appmetrica_app_id" placeholder="Lấy từ AppMetrica" required>
+
+                <label>AppMetrica API Key:</label>
+                <input type="text" name="appmetrica_api_key" placeholder="Key bí mật" required>
+
+                <button type="submit">Lưu Game</button>
+                <div id="gameAlert" class="alert"></div>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2>💎 Thêm Gói Booster</h2>
+            <form id="boosterForm">
+                <label>Chọn Game:</label>
+                <select name="game_id" id="gameSelect" required>
+                    <option value="">-- Đang tải danh sách game... --</option>
+                </select>
+
+                <label>ID Trong Log (Sku ID):</label>
+                <input type="text" name="booster_id_in_log" placeholder="VD: pack_starter_01" required>
+
+                <label>Tên hiển thị:</label>
+                <input type="text" name="friendly_name" placeholder="VD: Gói Tân Thủ" required>
+
+                <label>Giá tiền (USD):</label>
+                <input type="number" step="0.01" name="price_usd" placeholder="0.99" required>
+
+                <button type="submit" style="background-color: #28a745;">Lưu Booster</button>
+                <div id="boosterAlert" class="alert"></div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // 1. Hàm gửi dữ liệu đi (Dùng chung)
+        async function postData(url, data, alertId) {
+            const alertBox = document.getElementById(alertId);
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (response.ok) {
+                    alertBox.className = 'alert success';
+                    alertBox.innerText = '✅ Thành công! Đã lưu vào Database.';
+                    alertBox.style.display = 'block';
+                    if (url.includes('games')) loadGames(); // Reload list nếu vừa thêm game
+                } else {
+                    throw new Error('Lỗi Server');
+                }
+            } catch (error) {
+                alertBox.className = 'alert error';
+                alertBox.innerText = '❌ Thất bại! Kiểm tra lại thông tin.';
+                alertBox.style.display = 'block';
+            }
+        }
+
+        // 2. Xử lý Form Game
+        document.getElementById('gameForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+            data.is_active = true;
+            postData('/games/', data, 'gameAlert');
+        });
+
+        // 3. Xử lý Form Booster
+        document.getElementById('boosterForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+            postData('/boosters/', data, 'boosterAlert');
+        });
+
+        // 4. Tự động tải danh sách Game vào Dropdown
+        async function loadGames() {
+            const select = document.getElementById('gameSelect');
+            try {
+                const res = await fetch('/games/');
+                const games = await res.json();
+                select.innerHTML = '<option value="">-- Chọn Game --</option>';
+                games.forEach(game => {
+                    select.innerHTML += `<option value="${game.id}">${game.name} (${game.platform})</option>`;
+                });
+            } catch (err) {
+                select.innerHTML = '<option>Lỗi tải danh sách game</option>';
+            }
+        }
+        
+        // Chạy ngay khi mở web
+        loadGames();
+    </script>
+</body>
+</html>
