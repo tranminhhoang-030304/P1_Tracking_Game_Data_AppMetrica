@@ -55,7 +55,7 @@ def sync_from_oracle_fixed():
             SELECT SESSION_ID, APPMETRICA_DEVICE_ID, EVENT_NAME, EVENT_JSON 
             FROM SKW_ID.APPMETRICA_EVENTS_RAW 
             WHERE EVENT_NAME IN ('Win_Battle', 'Lose_Battle')
-            FETCH FIRST 3000 ROWS ONLY
+            FETCH FIRST 8000 ROWS ONLY
         """
         df_oracle = pd.read_sql(sql, conn)
         
